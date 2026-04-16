@@ -43,10 +43,34 @@ class JsonTraversalTest {
             setProperty("name", "task")
         }
 
-        val refs = root.filterNodes { it is JsonReference }
+        val refs = root.findReferences()
 
         assertEquals(2, refs.size)
-        assertEquals("a", (refs[0] as JsonReference).refId)
-        assertEquals("b", (refs[1] as JsonReference).refId)
+        assertEquals("a", refs[0].refId)
+        assertEquals("b", refs[1].refId)
+    }
+
+    @Test
+    fun mapsPrimitiveSubsetWithoutMutatingOriginal() {
+        val root = JsonObject().apply {
+            setProperty("name", "task")
+            setProperty("values", JsonArray().add(1).add(2).add(true))
+        }
+
+        val mapped = root.mapPrimitives {
+            val value = it.value
+            if (value is Number) {
+                JsonPrimitive(value.toInt() + 10)
+            } else {
+                it
+            }
+        } as JsonObject
+
+        val mappedArray = mapped["values"] as JsonArray
+        val originalArray = root["values"] as JsonArray
+
+        assertEquals(11, (mappedArray[0] as JsonPrimitive).value)
+        assertEquals(12, (mappedArray[1] as JsonPrimitive).value)
+        assertEquals(1, (originalArray[0] as JsonPrimitive).value)
     }
 }
