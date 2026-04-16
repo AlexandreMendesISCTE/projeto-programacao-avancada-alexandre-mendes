@@ -17,6 +17,33 @@ Biblioteca Kotlin para gerar JSON a partir de objetos, com foco em API clara, te
 5. Referências (`$id`, `$ref`) e customização por annotations
 6. Plugins de serialização para string
 
+## Construir JSON manualmente
+
+### Exemplo com JsonObject
+
+```kotlin
+val json = JsonObject().apply {
+	setProperty("name", "ProJson")
+	setProperty("year", 2026)
+	setProperty("stable", false)
+}
+
+println(json)
+// {"name":"ProJson","year":2026,"stable":false}
+```
+
+### Exemplo com JsonArray
+
+```kotlin
+val array = JsonArray()
+	.add("a")
+	.add(null)
+	.add(JsonObject().apply { setProperty("id", 1) })
+
+println(array)
+// ["a",null,{"id":1}]
+```
+
 ## Build e testes
 
 ```bash
