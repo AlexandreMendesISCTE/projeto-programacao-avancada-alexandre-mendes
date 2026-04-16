@@ -1,6 +1,6 @@
 package pt.pa.jsonlib
 
-class JsonArray {
+class JsonArray : JsonValue {
     private val elements = mutableListOf<JsonValue>()
 
     val size: Int

@@ -79,4 +79,20 @@ class JsonModelTest {
 
         assertEquals(listOf("first", "second", "third"), json.propertyNames())
     }
+
+    @Test
+    fun supportsNestedJsonStructures() {
+        val child = JsonObject().apply {
+            setProperty("id", 10)
+        }
+        val array = JsonArray().add(child)
+        val root = JsonObject()
+
+        root.setProperty("items", array)
+
+        val storedArray = root["items"] as JsonArray
+        val storedChild = storedArray[0] as JsonObject
+
+        assertEquals(10, (storedChild["id"] as JsonPrimitive).value)
+    }
 }

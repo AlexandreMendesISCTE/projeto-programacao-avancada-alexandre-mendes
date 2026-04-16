@@ -1,6 +1,6 @@
 package pt.pa.jsonlib
 
-class JsonObject {
+class JsonObject : JsonValue {
     private val properties = LinkedHashMap<String, JsonValue>()
 
     val size: Int
