@@ -1,0 +1,596 @@
+# Plano detalhado para desenvolver o projeto **ProJson**
+
+Com base no enunciado e nos PDFs dos laboratórios, a melhor abordagem é desenvolver este projeto como uma **biblioteca Kotlin**, organizada em **iterações curtas**, sempre em **TDD**, e com a **API pública a estabilizar gradualmente**.
+
+O enunciado separa o trabalho em três macrofases bem claras:
+
+- **JSON standard**
+- **referências e customização**
+- **documentação/publicação**
+
+Também exige que:
+
+- a gestão de referências seja **transparente para o cliente**;
+- **não sejam usadas bibliotecas externas**;
+- a funcionalidade principal esteja coberta por **testes**;
+- haja **cuidado especial com a API e com a documentação**. fileciteturn0file5
+
+Os laboratórios dão uma base muito forte para este projeto:
+
+- **Lab 1**: TDD, extension functions, recursão e higher-order functions, úteis para utilitários, traversal e testes incrementais. fileciteturn0file4
+- **Lab 2**: Composite + Visitor, que encaixam muito bem no modelo em árvore do JSON e numa API de traversal limpa. fileciteturn0file3
+- **Lab 3**: Reflection, plugins e Strategy, essenciais para `toJson(...)`, instanciação via reflexão e serialização customizada. fileciteturn0file2
+- **Lab 4**: annotations + reflection, diretamente aplicáveis a `@Reference`, `@JsonProperty`, `@JsonIgnore` e `@JsonString`. fileciteturn0file1
+- **Lab 5**: Decorator/Observer, menos centrais, mas úteis para refinar o desenho sem mexer no núcleo, por exemplo para pretty print, tracing ou validação adicional. fileciteturn0file0
+
+---
+
+## Arquitetura recomendada
+
+Antes de programar, convém fixar esta divisão:
+
+### `api`
+- `ProJson`
+- `JsonObject`
+- `JsonArray`
+- `JsonReference`
+- anotações públicas
+
+### `model`
+- `JsonValue`
+- `JsonPrimitive`
+- `JsonNull`
+- classes internas de suporte
+
+### `serialization`
+- conversão de objectos Kotlin para modelo JSON
+- writer textual JSON
+- escaping de strings
+
+### `reflection`
+- leitura de propriedades
+- decisão de nomes
+- ignore/rename/reference annotations
+- deteção de plugins
+
+### `plugins`
+- interface de serialização para texto
+- resolução por reflexão
+
+### `internal`
+- registry de referências
+- geração de ids
+- helpers não públicos
+
+### `docs`
+- ADRs
+- debt log
+- tutorial incremental
+
+### Princípios de API a seguir desde o início
+1. **API pública mínima**: expor pouco e guardar reflexão, UUIDs e detalhes internos fora do contacto com o utilizador.
+2. **Nomes previsíveis**: `setProperty`, `removeProperty`, `add`, `removeAt`, `toJson`.
+3. **Estados válidos por construção**: a API não deve facilitar a criação de JSON inválido.
+4. **Separação forte de responsabilidades**: modelo JSON, reflexão, referências e rendering textual não devem ficar misturados.
+5. **Ordem estável nas propriedades**: usar `LinkedHashMap` para facilitar testes e documentação.
+
+---
+
+## Estratégia de trabalho
+
+Usar este ciclo em **todas** as stories:
+
+1. escrever o teste;
+2. correr e ver falhar;
+3. implementar o mínimo;
+4. refactor;
+5. correr auditoria pré-commit (obrigatória);
+6. atualizar documentação da fase;
+7. registar debt, se houver compromisso temporário;
+8. só depois fazer commit.
+
+Isto está totalmente alinhado com a abordagem dos labs, que insistem em TDD antes da implementação. fileciteturn0file4
+
+### Auditoria pré-commit (obrigatória, antes de **cada** commit)
+
+Objetivo: garantir que o commit representa funcionalidade realmente concluída, sem regressões e com evidência objetiva.
+
+Checklist mínima:
+
+1. **Alinhamento com o objetivo da task/story**
+   - confirmar que o comportamento pedido está mesmo implementado;
+   - confirmar que não ficou apenas “meio ligado” ou com TODO crítico aberto.
+
+2. **Cobertura de testes da alteração**
+   - existe teste novo ou ajustado para o comportamento alterado;
+   - o teste falha sem a mudança e passa com a mudança.
+
+3. **Regressão global**
+   - todos os testes relevantes do módulo/fase passam;
+   - sem falhas intermitentes não explicadas.
+
+4. **Validação da API pública**
+   - nomes, assinatura e semântica estão coerentes com o plano;
+   - nenhum detalhe interno foi exposto acidentalmente.
+
+5. **Conformidade com o enunciado**
+   - mudança continua a respeitar “sem bibliotecas externas”;
+   - referências continuam transparentes para o cliente;
+   - output JSON mantém-se válido.
+
+6. **Documentação e debt**
+   - documentação da fase atualizada (README/docs/KDoc quando aplicável);
+   - debt log atualizado quando houve atalho técnico.
+
+Comandos mínimos de auditoria (antes de commit):
+
+- `./gradlew test`
+- `./gradlew build`
+
+Regra de bloqueio:
+
+- se qualquer item da checklist falhar, **não** fazer commit;
+- corrigir primeiro, repetir auditoria, e só depois commitar.
+
+## Ajustes recomendados após revisão do enunciado e labs
+
+1. **Referências como política explícita de anotação**
+   A geração de `$ref` deve ser ativada quando a propriedade/classe estiver anotada para referência, evitando uma política implícita demasiado agressiva.
+
+2. **Traversal faz parte do fecho da fase standard**
+   Mesmo que fique numa iteração própria, manter explícito que traversal é requisito da fase 1 (não extra).
+
+3. **Testes dedicados à instanciação via reflection**
+   Adicionar casos específicos para comprovar instanciação/reflexão dos modelos JSON conforme o enunciado.
+
+4. **Validação estrita de JSON válido**
+   Reforçar testes de escaping e sintaxe textual (aspas, barras, controlo, nulls, estruturas aninhadas) para garantir conformidade robusta.
+
+5. **Política clara para value objects sem `$id`**
+   Definir e documentar a regra para distinguir objetos de valor (embebidos) de objetos com identidade/referência.
+
+---
+
+# Plano detalhado por iterações
+
+## Iteração 0 — Preparação do repositório
+
+### Objetivo
+Criar a base técnica para não acumular dívida logo no arranque.
+
+### Implementação
+- projeto Gradle Kotlin;
+- dependência `kotlin("reflect")`, porque vais precisar de reflection como no Lab 3; fileciteturn0file2
+- testes com `kotlin.test` ou JUnit;
+- estrutura de packages;
+- GitHub Actions para `build` e `test`;
+- `README.md` inicial;
+- `CHANGELOG.md`;
+- `docs/debt-log.md`;
+- `docs/adr/ADR-0001-arquitetura.md`.
+
+### Commits
+- `chore: bootstrap kotlin gradle project`
+- `chore: add kotlin reflect and test setup`
+- `docs: add roadmap changelog and debt log`
+
+### Tag
+- `v0.1.0`
+
+---
+
+## Iteração 1 — Modelo JSON em memória
+
+### Objetivo
+Construir primeiro o **modelo**, não a serialização automática.
+
+### Implementação
+Criar a árvore JSON com inspiração direta no Composite do Lab 2: fileciteturn0file3
+
+- `JsonValue` como tipo base;
+- `JsonObject`;
+- `JsonArray`;
+- `JsonPrimitive`;
+- `JsonNull`;
+- `JsonReference` já definido no modelo, mesmo que ainda sem lógica completa.
+
+### TDD
+Escrever testes para:
+- criar `JsonObject` vazio;
+- adicionar, substituir e remover propriedades;
+- criar `JsonArray` e adicionar/remover elementos;
+- impedir estados inválidos;
+- manter ordem de inserção nas propriedades.
+
+### Documentação da fase
+- `docs/modelo-json.md`
+- KDoc nas classes públicas do modelo
+
+### Commits
+- `test: add json object and array behaviour tests`
+- `feat: implement in-memory json model`
+- `docs: document json model api`
+
+### Tag
+- `v0.2.0`
+
+---
+
+## Iteração 2 — Writer textual JSON
+
+### Objetivo
+Só depois do modelo existir é que deves converter para texto.
+
+O enunciado diz que a prioridade é gerar **JSON válido**, e que pretty-print é opcional. Portanto, começa por output compacto e deixa pretty-print para depois. fileciteturn0file5
+
+### Implementação
+- `JsonWriter`;
+- escaping correto de strings;
+- números, booleanos, `null`;
+- objetos e arrays aninhados.
+
+### TDD
+Testes para:
+- strings com aspas, barras e quebras de linha;
+- arrays mistos;
+- objetos aninhados;
+- `toString()` produzir JSON válido;
+- golden tests com texto esperado.
+
+### Documentação da fase
+- secção no README: “Construir JSON manualmente”
+- exemplos mínimos de `JsonObject` e `JsonArray`
+
+### Commits
+- `test: add json writer rendering tests`
+- `feat: implement json text writer`
+- `refactor: isolate escaping and formatting logic`
+- `docs: add manual json creation examples`
+
+### Tag
+- `v0.3.0`
+
+---
+
+## Iteração 3 — Traversal e utilitários funcionais
+
+### Objetivo
+Aplicar Visitor/HOF dos Labs 1 e 2 ao modelo JSON. fileciteturn0file4turn0file3
+
+### Implementação
+- `accept(visitor: (JsonValue) -> Unit)`
+- helpers como `map`, `filter`, `count` ou equivalentes internos
+- utilitários de navegação para objetos e arrays
+
+### TDD
+Testes para:
+- visitar todos os nós;
+- contar nós;
+- extrair referências;
+- transformar subconjuntos.
+
+### Documentação da fase
+- `docs/traversal.md`
+- nota de desenho a justificar o uso de Visitor
+
+### Commits
+- `test: add traversal and visitor tests`
+- `feat: implement json tree traversal api`
+- `docs: explain traversal decisions`
+
+### Tag
+- `v0.4.0`
+
+---
+
+## Iteração 4 — `ProJson.toJson(...)` base com reflection
+
+### Objetivo
+Começar a geração automática a partir de objectos Kotlin.
+
+O enunciado pede conversão de objectos, arrays a partir de coleções, e tratamento especial de `Map`, que não deve gerar `$type`. fileciteturn0file5
+
+### Implementação
+Suporte inicial para:
+- `null`;
+- `String`, `Int`, `Double`, `Boolean`;
+- `Collection` → `JsonArray`;
+- `Map` → `JsonObject` sem `$type`;
+- data classes e classes normais via reflection;
+- inclusão de `$type` quando aplicável.
+
+### TDD
+Testes para:
+- `Date` gerar objeto com `$type`;
+- listas gerarem `JsonArray`;
+- maps não gerarem `$type`;
+- propriedades refletidas na ordem do construtor/propriedades declaradas.
+
+### Documentação da fase
+- README: “Serializar objectos com `ProJson`”
+- `docs/reflection-serialization.md`
+
+### Commits
+- `test: add reflection serialization tests`
+- `feat: implement ProJson basic object mapping`
+- `refactor: separate reflection inspection from json model creation`
+- `docs: add ProJson usage examples`
+
+### Tag
+- `v0.5.0`
+
+---
+
+## Iteração 5 — Sistema de referências
+
+### Objetivo
+Implementar a parte mais sensível do projeto: `$id` e `$ref`, com gestão transparente.
+
+O enunciado pede exatamente isso para estruturas em grafo, com referências transparentes para o cliente. fileciteturn0file5
+
+### Implementação
+Criar:
+- `ReferenceRegistry`;
+- geração estável de ids durante uma serialização;
+- deteção de objectos já serializados;
+- `JsonReference`;
+- política de identidade separada da política de rendering.
+
+### Decisão importante
+Não misturar esta lógica com `JsonWriter`.
+A referência é uma decisão de **mapeamento**, não de texto.
+
+### TDD
+Testes para:
+- um objecto repetido virar `$ref`;
+- listas com dependências partilhadas;
+- coleções de tarefas como no exemplo do enunciado;
+- ausência de `$id` em value objects que devam ficar embebidos;
+- estabilidade do output dentro da mesma execução de serialização.
+
+### Documentação da fase
+- `docs/references.md`
+- ADR: “Como a biblioteca decide entre inline object e reference”
+
+### Commits
+- `test: add reference serialization tests`
+- `feat: implement reference registry and JsonReference generation`
+- `refactor: isolate identity policy from serializer`
+- `docs: document reference model and examples`
+
+### Tag
+- `v0.6.0`
+
+---
+
+## Iteração 6 — Annotations de customização
+
+### Objetivo
+Aplicar o que vem do Lab 4 diretamente ao projeto. fileciteturn0file1
+
+### Implementação
+- `@Reference`
+- `@JsonProperty`
+- `@JsonIgnore`
+- leitura destas annotations por reflection
+
+### TDD
+Testes para:
+- renomeação de propriedades;
+- ignorar propriedades;
+- aplicar referência apenas onde anotado;
+- combinações entre `@JsonProperty` e `@JsonIgnore`.
+
+### Documentação da fase
+- README: “Customizar o output com annotations”
+- `docs/annotations.md`
+
+### Commits
+- `test: add annotation support tests`
+- `feat: implement JsonProperty JsonIgnore and Reference annotations`
+- `docs: add annotation tutorial`
+
+### Tag
+- `v0.7.0`
+
+---
+
+## Iteração 7 — Plugins de serialização para texto
+
+### Objetivo
+Implementar o mecanismo tipo plugin pedido no enunciado, alinhado com reflection/plugins/strategy do Lab 3. fileciteturn0file2turn0file5
+
+### Implementação
+Sugestão:
+
+```kotlin
+interface JsonStringSerializer<T : Any> {
+    fun serialize(value: T): String
+}
+```
+
+Depois:
+- `@JsonString(DateAsText::class)`;
+- instanciação da classe do plugin via reflection;
+- validação do contrato do plugin.
+
+### TDD
+Testes para:
+- `Date` serializada como string;
+- plugin inválido falhar cedo com mensagem útil;
+- plugin aplicado em listas e objetos aninhados.
+
+### Documentação da fase
+- `docs/plugins.md`
+- exemplo completo `DateAsText`
+
+### Commits
+- `test: add json string plugin tests`
+- `feat: implement annotation-driven string serializers`
+- `refactor: cache plugin instances`
+- `docs: add custom serializer examples`
+
+### Tag
+- `v0.8.0`
+
+---
+
+## Iteração 8 — Robustez, debt reduction e polishing
+
+### Objetivo
+Reduzir dívida técnica antes da entrega.
+
+### Implementação
+- rever nomes da API;
+- esconder classes internas;
+- melhorar mensagens de erro;
+- validar inputs públicos com `require`;
+- rever mutabilidade exposta;
+- opcional: pretty-print como decorator, sem tocar no writer base, o que fica bem alinhado com o Lab 5. fileciteturn0file0
+
+### TDD
+- testes de regressão;
+- testes de erro;
+- testes de edge cases;
+- testes de compatibilidade da API pública.
+
+### Documentação da fase
+- atualizar debt log;
+- ADRs finais;
+- `docs/known-limitations.md`.
+
+### Commits
+- `test: add regression and edge case tests`
+- `refactor: harden public api and reduce technical debt`
+- `docs: record limitations and deferred decisions`
+
+### Tag
+- `v0.9.0`
+
+---
+
+## Iteração 9 — Documentação final e publicação
+
+### Objetivo
+Fechar a entrega exatamente como o enunciado pede: comentários estilo Javadoc/KDoc, README detalhado e release com JAR. fileciteturn0file5
+
+### Implementação
+- KDoc em toda a API pública;
+- README com tutorial completo:
+  - JSON manual
+  - `toJson`
+  - referências
+  - annotations
+  - plugins
+- exemplos executáveis;
+- `CHANGELOG.md`;
+- release GitHub com JAR.
+
+### TDD / validação final
+- `./gradlew test`
+- `./gradlew build`
+- testar exemplos do README
+
+### Commits
+- `docs: complete kdoc for public api`
+- `docs: write full README tutorial`
+- `chore: prepare release artifacts`
+- `release: v1.0.0`
+
+### Tag final
+- `v1.0.0`
+
+---
+
+# Planeamento de branches, commits e versões
+
+## Estratégia de branches
+Para um projeto académico, manteria isto simples:
+
+- `main` → sempre estável
+- `feature/<nome-curto>` → uma funcionalidade por branch
+- `release/v1.0.0` → congelamento final
+- `hotfix/...` → só se aparecer bug grave
+
+## Convenção de commits
+Usar **Conventional Commits**:
+
+- `feat:`
+- `test:`
+- `refactor:`
+- `docs:`
+- `chore:`
+- `release:`
+
+## Política de versões
+Enquanto a API estiver a mexer:
+
+- `0.x.y`
+
+Marcos recomendados:
+
+- `v0.1.0` bootstrap
+- `v0.2.0` modelo JSON
+- `v0.3.0` writer textual
+- `v0.4.0` traversal
+- `v0.5.0` reflection base
+- `v0.6.0` referências
+- `v0.7.0` annotations
+- `v0.8.0` plugins
+- `v0.9.0` estabilização
+- `v1.0.0` entrega final
+
+---
+
+# Como controlar technical debt sem travar o projeto
+
+1. **Debt log obrigatório**
+   Sempre que fizeres um atalho, regista:
+   - o que ficou por fazer;
+   - impacto;
+   - prioridade;
+   - quando pretendes pagar essa dívida.
+
+2. **ADR por decisão importante**
+   Especialmente para:
+   - política de referências;
+   - fronteira da API pública;
+   - plugin system;
+   - mutabilidade do modelo JSON.
+
+3. **Não generalizar cedo demais**
+   Primeiro faz funcionar com o que o enunciado pede.
+   Só depois pensar em extras como pretty print avançado ou parsing.
+
+4. **Refactor logo após verde**
+   Não acumular vários testes verdes com código feio.
+   O momento certo para refactor é logo depois de cada pequeno ciclo TDD.
+
+5. **Definition of Done**
+   Uma tarefa só fecha quando:
+   - os testes passam;
+   - a API está coerente;
+   - a documentação da fase foi atualizada;
+   - a dívida técnica foi registada ou reduzida.
+
+---
+
+# Ordem ideal para não te perderes
+
+Se quiseres maximizar alinhamento com as aulas, a melhor sequência é esta:
+
+1. **Lab 2 primeiro** para modelar a árvore JSON
+2. **Lab 1** para TDD e helpers funcionais
+3. **Lab 3** para `toJson`, reflection e plugins
+4. **Lab 4** para annotations
+5. **Lab 5** no refinamento, se precisares de decorators para formatting/tracing fileciteturn0file3turn0file4turn0file2turn0file1turn0file0
+
+---
+
+# Resumo executivo
+
+O melhor plano é desenvolver isto como **biblioteca Kotlin em 9 iterações**, sempre por **TDD**, com **tags por milestone**, documentação viva em cada fase, e com esta ordem técnica:
+
+**modelo JSON → writer → traversal → reflection → referências → annotations → plugins → hardening → release**
+
+Esta ordem respeita o enunciado do projeto e reaproveita quase diretamente os padrões e técnicas dos laboratórios. fileciteturn0file5turn0file3turn0file2turn0file1turn0file4
