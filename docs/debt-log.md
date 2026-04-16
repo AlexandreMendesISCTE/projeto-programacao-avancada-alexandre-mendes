@@ -9,6 +9,13 @@
 - Prioridade: Média.
 - Plano de resolução: investigar configuração de build/cache para reduzir conflitos de lock.
 
+### DEBT-002 - Estratégia de referências no primeiro encontro
+- Contexto: quando um objeto referenciado aparece pela primeira vez numa propriedade `@Reference`, pode ser serializado inline com `$id` antes de ser reutilizado via `$ref`.
+- Impacto: pode introduzir variação de forma conforme a ordem de travessia.
+- Mitigação atual: cobertura de testes e documentação explícita da política.
+- Prioridade: Baixa.
+- Plano de resolução: avaliar política configurável de materialização de referências.
+
 ## Fechado
 
-- Nenhum item fechado até ao momento.
+- DEBT-000 - Bootstrap inicial sem arquitetura formal, resolvido com ADR-0001 e organização em camadas.

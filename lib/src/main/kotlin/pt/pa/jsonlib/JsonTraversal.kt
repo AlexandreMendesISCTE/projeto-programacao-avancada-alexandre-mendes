@@ -1,5 +1,6 @@
 package pt.pa.jsonlib
 
+/** Traverses the JSON tree in pre-order and invokes [visitor] for each node. */
 fun JsonValue.accept(visitor: (JsonValue) -> Unit) {
     visitor(this)
 
@@ -10,6 +11,7 @@ fun JsonValue.accept(visitor: (JsonValue) -> Unit) {
     }
 }
 
+/** Returns all nodes that satisfy [predicate]. */
 fun JsonValue.filterNodes(predicate: (JsonValue) -> Boolean): List<JsonValue> {
     val nodes = mutableListOf<JsonValue>()
     accept { value ->
@@ -20,12 +22,17 @@ fun JsonValue.filterNodes(predicate: (JsonValue) -> Boolean): List<JsonValue> {
     return nodes
 }
 
+/** Counts nodes that satisfy [predicate]. */
 fun JsonValue.countNodes(predicate: (JsonValue) -> Boolean = { true }): Int =
     filterNodes(predicate).size
 
+/** Collects all [JsonReference] nodes in the tree. */
 fun JsonValue.findReferences(): List<JsonReference> =
     filterNodes { it is JsonReference }.map { it as JsonReference }
 
+/**
+ * Creates a transformed copy of the tree by applying [transform] to primitive nodes.
+ */
 fun JsonValue.mapPrimitives(transform: (JsonPrimitive) -> JsonValue): JsonValue = when (this) {
     is JsonPrimitive -> transform(this)
     is JsonObject -> JsonObject().also { mapped ->
