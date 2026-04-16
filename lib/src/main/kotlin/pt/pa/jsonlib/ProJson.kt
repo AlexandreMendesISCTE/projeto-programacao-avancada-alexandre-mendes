@@ -39,8 +39,8 @@ class ProJson {
 
     private fun serializeMap(values: Map<*, *>): JsonObject = JsonObject().also { obj ->
         values.forEach { (key, value) ->
-            require(key is String) { "JSON object keys must be strings" }
-            obj.setProperty(key, serialize(value))
+            requireNotNull(key) { "JSON object keys cannot be null" }
+            obj.setProperty(key.toString(), serialize(value))
         }
     }
 

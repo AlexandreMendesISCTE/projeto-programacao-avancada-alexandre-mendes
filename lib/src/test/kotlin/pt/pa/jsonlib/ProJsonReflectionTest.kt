@@ -14,6 +14,8 @@ class ProJsonReflectionTest {
         val done: Boolean
     )
 
+    class RegularTask(val id: Int, val label: String)
+
     @Test
     fun serializesDataClassWithType() {
         val json = ProJson().toJson(DateDto(31, 4, 2026)) as JsonObject
@@ -51,5 +53,32 @@ class ProJsonReflectionTest {
             listOf("\$type", "description", "priority", "done"),
             json.propertyNames()
         )
+    }
+
+    @Test
+    fun serializesRegularClassWithType() {
+        val json = ProJson().toJson(RegularTask(7, "A")) as JsonObject
+
+        assertEquals("RegularTask", (json["\$type"] as JsonPrimitive).value)
+        assertEquals(7, (json["id"] as JsonPrimitive).value)
+        assertEquals("A", (json["label"] as JsonPrimitive).value)
+    }
+
+    @Test
+    fun serializesJvmArraysAsJsonArray() {
+        val json = ProJson().toJson(arrayOf(1, 2, 3)) as JsonArray
+
+        assertEquals(3, json.size)
+        assertEquals(1, (json[0] as JsonPrimitive).value)
+        assertEquals(2, (json[1] as JsonPrimitive).value)
+        assertEquals(3, (json[2] as JsonPrimitive).value)
+    }
+
+    @Test
+    fun convertsMapKeysToStrings() {
+        val json = ProJson().toJson(linkedMapOf(1 to "a", 2 to "b")) as JsonObject
+
+        assertEquals("a", (json["1"] as JsonPrimitive).value)
+        assertEquals("b", (json["2"] as JsonPrimitive).value)
     }
 }
