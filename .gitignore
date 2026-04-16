@@ -1,6 +1,8 @@
 # Ignore Gradle project-specific cache directory
 .gradle
-.pdf
+*.pdf
+.venv
 
 # Ignore Gradle build output directory
 build
+lib/build
