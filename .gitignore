@@ -2,6 +2,7 @@
 .gradle
 *.pdf
 .venv
+/plano_projeto_projson.mdd
 
 # Ignore Gradle build output directory
 build
