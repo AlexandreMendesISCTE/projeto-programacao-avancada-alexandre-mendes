@@ -1,5 +1,6 @@
 package pt.pa.jsonlib
 
+/** Base type for all in-memory JSON nodes. */
 sealed interface JsonValue
 
 internal object JsonValueFactory {
