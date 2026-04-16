@@ -22,4 +22,6 @@ class JsonArray : JsonValue {
     fun removeAt(index: Int): JsonValue = elements.removeAt(index)
 
     fun toList(): List<JsonValue> = elements.toList()
+
+    override fun toString(): String = JsonWriter.write(this)
 }

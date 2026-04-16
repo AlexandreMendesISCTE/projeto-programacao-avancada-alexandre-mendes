@@ -31,4 +31,6 @@ class JsonObject : JsonValue {
     }
 
     internal fun entries(): Set<Map.Entry<String, JsonValue>> = properties.entries
+
+    override fun toString(): String = JsonWriter.write(this)
 }
