@@ -44,6 +44,28 @@ println(array)
 // ["a",null,{"id":1}]
 ```
 
+## Serializar objetos com ProJson
+
+```kotlin
+data class DateDto(val day: Int, val month: Int, val year: Int)
+
+val json = ProJson().toJson(DateDto(31, 4, 2026)) as JsonObject
+println(json)
+// {"$type":"DateDto","day":31,"month":4,"year":2026}
+```
+
+```kotlin
+val listJson = ProJson().toJson(listOf("a", null, "b")) as JsonArray
+println(listJson)
+// ["a",null,"b"]
+```
+
+```kotlin
+val mapJson = ProJson().toJson(mapOf("x" to 1, "y" to true)) as JsonObject
+println(mapJson)
+// {"x":1,"y":true}
+```
+
 ## Build e testes
 
 ```bash
