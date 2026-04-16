@@ -7,4 +7,6 @@ data class JsonPrimitive(val value: Any) : JsonValue {
             "JsonPrimitive only supports String, Number, and Boolean values"
         }
     }
+
+    override fun toString(): String = JsonWriter.write(this)
 }

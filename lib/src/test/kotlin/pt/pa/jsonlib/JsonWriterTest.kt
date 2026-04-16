@@ -2,6 +2,7 @@ package pt.pa.jsonlib
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class JsonWriterTest {
     @Test
@@ -40,5 +41,23 @@ class JsonWriterTest {
         }
 
         assertEquals("{\"dep\":{\"\$ref\":\"abc-123\"}}", root.toString())
+    }
+
+    @Test
+    fun rendersRootValues() {
+        assertEquals("\"x\"", JsonPrimitive("x").toString())
+        assertEquals("false", JsonPrimitive(false).toString())
+        assertEquals("null", JsonNull.toString())
+        assertEquals("{\"\$ref\":\"id-1\"}", JsonReference("id-1").toString())
+    }
+
+    @Test
+    fun rejectsNonFiniteNumbers() {
+        assertFailsWith<IllegalArgumentException> {
+            JsonPrimitive(Double.NaN).toString()
+        }
+        assertFailsWith<IllegalArgumentException> {
+            JsonPrimitive(Float.POSITIVE_INFINITY).toString()
+        }
     }
 }
